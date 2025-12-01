@@ -1,0 +1,171 @@
+Metadata-Version: 2.4
+Name: unnclang
+Version: 0.1.0
+Summary: Macro-style helpers that let UNNCLang pseudo code run through the Python interpreter
+Author-email: UNNC CELEN086 <cso@unnc.edu.cn>
+License: MIT
+Keywords: macro,education,unnc,pseudocode
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Intended Audience :: Education
+Classifier: Topic :: Software Development :: Code Generators
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+
+# UNNCLang Interpreter Helpers
+
+为 UNNC CELEN086 课程准备的一个 Python 包，利用“宏”式占位符让 UNNCLang 伪代码可以直接由 Python 解释器处理。核心思路是把 `endif` 等语句定义成特殊对象，它们在运行时什么也不做，但可以出现在源代码中，从而保留课堂上的书写风格。
+
+## 快速开始
+
+1. 安装依赖（建议使用虚拟环境）：
+   ```bash
+   pip install -e .
+   ```
+2. 在你的脚本中导入并暴露宏：
+   ```python
+   from unnclang import load_macros
+
+   load_macros(globals())  # 或者 from unnclang import endif 逐个导入
+   ```
+
+现在就可以在 Python 文件里写出 UNNCLang 风格的结构：
+
+```python
+from unnclang import load_macros
+
+load_macros(globals())
+
+value = 5
+if value > 0:
+    print("positive")
+endif  # 这行在运行时什么也不做，但可以保留 UNNCLang 的语感
+```
+
+## 测试代码示例
+
+项目自带 `tests/test_macros.py`，包含一个最小脚本验证 `endif` 能够作为裸语句出现：
+
+```bash
+pytest tests/test_macros.py
+```
+
+测试里会 `exec` 以下脚本片段并断言 `message == "positive"`：
+
+```python
+from unnclang import load_macros
+
+load_macros(globals())
+
+value = 5
+if value > 0:
+    message = "positive"
+endif
+```
+
+你可以在此基础上增添更多断言，或把 `exec` 内容替换成真实的 UNNCLang 练习题。
+
+## `endif` 示例
+
+仓库已经内置了 `endif` 语句，定义位于 `src/unnclang/macros/core.py`：
+
+```python
+@statement_macro(doc="Marks the end of a conditional block in UNNCLang-style code.")
+def endif():
+    return None
+```
+
+由于它被注册成 `StatementMacro` 对象，Python 解释器会把 `endif` 当作一个普通名字处理，因此你可以直接写 `endif`（不要加括号），而不会触发任何函数调用。
+
+为了课堂更方便，包在导入时会把所有注册的 statement macros 注入到 Python 的 `builtins`，这意味着在导入 `unnclang` 之后，脚本全局就可以直接出现 `endif` 这样裸的名字而无需显式调用 `load_macros(globals())`。
+
+如果你不想要这种全局注入（例如避免污染全局命名空间），可以在导入后调用：
+
+```python
+import unnclang
+unnclang.disable_builtin_macros()
+```
+
+## 去哪里添加更多宏？
+
+1. 打开 `src/unnclang/macros/core.py`（或者在 `src/unnclang/macros/` 新建模块）。
+2. 使用 `@statement_macro` 装饰器声明一个新的 UNNCLang 语句：
+   ```python
+   from unnclang import statement_macro
+
+   @statement_macro()
+   def endwhile():
+       """结束 while 循环。"""
+       return None
+   ```
+3. 确保模块被 `unnclang/macros/__init__.py` 导入，这样一 `import unnclang` 就会注册到全局表里。
+4. 在用户代码里 `load_macros(globals())` 或 `from unnclang import endwhile` 即可直接使用。
+
+> 🎯 小贴士：`statement_macro` 会保留你的 Python 函数作为 `handler` 字段，未来如果要做真正的源码重写或静态检查，可以利用这些处理器实现更加复杂的行为。
+
+## 项目结构
+
+```
+pyproject.toml          # 包配置
+src/unnclang/           # 包源码
+  ├── __init__.py       # 对外 API（load_macros、statement_macro 等）
+  ├── registry.py       # 宏注册与导出逻辑
+  └── macros/           # 内置的 UNNCLang 语句定义
+       └── core.py      # 已存在的 endif 定义
+README.md               # 本说明文档
+docs/                   # 开发与扩展文档（如何添加宏与预处理规则）
+tests/                  # pytest 用例与示例脚本
+    └── test_macros.py
+```
+
+## GitHub Actions 自动发布到 PyPI
+
+仓库下的 `.github/workflows/publish.yml` 定义了两步流水线：
+
+1. **tests**：在 `ubuntu-latest` 上安装依赖并运行 `pytest`，对 `main` 分支的 push 与 PR 都触发。
+2. **publish**：仅当推送的 ref 是 `v*` 前缀的 tag 时运行，在通过测试后构建 sdist/wheel 并上传 PyPI。
+
+使用方法：
+
+1. 在 GitHub 仓库的 `Settings > Secrets and variables > Actions` 中创建 `PYPI_API_TOKEN`，内容为你的 PyPI API Token（格式形如 `pypi-AgEIcHlwaS5vcmcCJ...`）。
+2. 按语义化版本更新 `pyproject.toml` 中的 `version`，提交并推送到 `main`。
+3. 打 tag：
+     ```bash
+     git tag v0.1.0
+     git push origin v0.1.0
+     ```
+4. GitHub Actions 将自动运行测试并调用 `pypa/gh-action-pypi-publish`，成功后可在 PyPI 查看新版本。
+
+若需要同时发布到 TestPyPI，可在 workflow 中添加第二个 job 重复构建并把 `repository-url` 指向 test.pypi.org。
+
+## 后续规划
+
+- 扩充更多教学语句（`endwhile`, `repeat`, `until` 等）。
+- 添加基于 AST 的静态转换，让宏真正影响语义而不仅是占位。
+- 提供命令行入口 `python -m unnclang your_script.uncl`，便于批量运行 UNNCLang 文件。
+
+欢迎继续迭代！
+
+## 安装为命令行工具（可选）
+
+你可以把这个包安装到你的 Python 环境，从而获得一个 `uncl` 命令行工具：
+
+```bash
+pip install -e .
+# 之后你可以运行：
+uncl demo.uncl
+# 如果想在运行前设置变量，例如让 a=2：
+uncl demo.uncl -s a=2
+```
+
+开发时如果不希望安装到环境，也可以用模块方式运行：
+
+```bash
+python -m unnclang.cli demo.uncl -s a=2
+```
+
+注意：`uncl` 只是把 UNNCLang 风格的源预处理成合法的 Python 并执行；如果文件中引用未定义的变量（例如 `a`），将抛出标准的 Python 错误（NameError）。
+欢迎继续迭代！

@@ -1,0 +1,5 @@
+import unnclang
+a=3
+if a>1 then:
+    print("1")
+endif

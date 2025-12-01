@@ -63,6 +63,15 @@ def endif():
 
 由于它被注册成 `StatementMacro` 对象，Python 解释器会把 `endif` 当作一个普通名字处理，因此你可以直接写 `endif`（不要加括号），而不会触发任何函数调用。
 
+为了课堂更方便，包在导入时会把所有注册的 statement macros 注入到 Python 的 `builtins`，这意味着在导入 `unnclang` 之后，脚本全局就可以直接出现 `endif` 这样裸的名字而无需显式调用 `load_macros(globals())`。
+
+如果你不想要这种全局注入（例如避免污染全局命名空间），可以在导入后调用：
+
+```python
+import unnclang
+unnclang.disable_builtin_macros()
+```
+
 ## 去哪里添加更多宏？
 
 1. 打开 `src/unnclang/macros/core.py`（或者在 `src/unnclang/macros/` 新建模块）。
@@ -90,34 +99,133 @@ src/unnclang/           # 包源码
   └── macros/           # 内置的 UNNCLang 语句定义
        └── core.py      # 已存在的 endif 定义
 README.md               # 本说明文档
+docs/                   # 开发与扩展文档（如何添加宏与预处理规则）
 tests/                  # pytest 用例与示例脚本
     └── test_macros.py
 ```
 
-## GitHub Actions 自动发布到 PyPI
+ # UNNCLang — 教学伪代码到 Python 的轻量工具
 
-仓库下的 `.github/workflows/publish.yml` 定义了两步流水线：
+UNNCLang 是为教学（例如 UNNC CELEN086）准备的一个轻量 Python 包，目标是让课堂上书写的伪代码（例如带 `endif`、`then:`、`otherwise` 的风格）能更方便地在 Python 环境里测试与运行。
 
-1. **tests**：在 `ubuntu-latest` 上安装依赖并运行 `pytest`，对 `main` 分支的 push 与 PR 都触发。
-2. **publish**：仅当推送的 ref 是 `v*` 前缀的 tag 时运行，在通过测试后构建 sdist/wheel 并上传 PyPI。
+本项目采用两条策略：
+- 语句宏（statement macros）：把像 `endif` 这样的裸名字注册为占位符（不会改变运行时语义，只是避免 NameError）。
+- 预处理（preprocessor）：把不可被 Python 直接解析的语法糖（例如 `if a>1 then:`）转换成合法的 Python 源再执行。
 
-使用方法：
+这个仓库已包含示例实现、一个 CLI（`uncl`），以及扩展指南，适合拿来做课堂演示或二次开发。
 
-1. 在 GitHub 仓库的 `Settings > Secrets and variables > Actions` 中创建 `PYPI_API_TOKEN`，内容为你的 PyPI API Token（格式形如 `pypi-AgEIcHlwaS5vcmcCJ...`）。
-2. 按语义化版本更新 `pyproject.toml` 中的 `version`，提交并推送到 `main`。
-3. 打 tag：
-     ```bash
-     git tag v0.1.0
-     git push origin v0.1.0
-     ```
-4. GitHub Actions 将自动运行测试并调用 `pypa/gh-action-pypi-publish`，成功后可在 PyPI 查看新版本。
+---
 
-若需要同时发布到 TestPyPI，可在 workflow 中添加第二个 job 重复构建并把 `repository-url` 指向 test.pypi.org。
+## 快速开始
 
-## 后续规划
+建议使用虚拟环境：
 
-- 扩充更多教学语句（`endwhile`, `repeat`, `until` 等）。
-- 添加基于 AST 的静态转换，让宏真正影响语义而不仅是占位。
-- 提供命令行入口 `python -m unnclang your_script.uncl`，便于批量运行 UNNCLang 文件。
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
 
-欢迎继续迭代！
+安装后你将获得：
+- Python 包 `unnclang` 可用于脚本导入；
+- 命令行工具 `uncl`，用于运行 UNNCLang 风格的源文件。
+
+示例：
+
+在仓库根有一个最小示例 `demo.uncl`（四行）：
+
+```text
+import unnclang
+if a>1 then:
+    print("1")
+endif
+```
+
+直接运行：
+
+```bash
+# 方式 A：已安装为脚本
+uncl demo.uncl
+
+# 或者（不安装）
+python -m unnclang.cli demo.uncl
+```
+
+如果未定义 `a`，程序会抛出标准的 Python `NameError`；如需在运行时传入变量：
+
+```bash
+uncl demo.uncl -s a=2
+```
+
+---
+
+## 包内 API（快速参考）
+
+- `unnclang.run_uncl(path, set_vars=None)`：读取并预处理 UNNCLang 源文件，再以 Python 执行。`set_vars` 为可选字典，预置执行命名空间。
+- `unnclang.statement_macro`：装饰器，用于注册 statement-style 宏（占位的裸名字）。
+- `unnclang.disable_builtin_macros()`：如果你不想让宏被注入到全局 `builtins`，可以调用此函数移除注入的名字。
+
+注意：包导入时默认会把注册的 statement macros 注入到 `builtins`（为了教学方便）。如果你要避免污染全局命名空间，请在导入后调用 `disable_builtin_macros()`。
+
+---
+
+## CLI：`uncl`
+
+安装后会有 `uncl` 命令，其基本用法：
+
+```bash
+uncl FILE [--set-var name=value]...
+```
+
+示例：
+
+```bash
+uncl demo.uncl -s a=2
+```
+
+`uncl` 只是把 UNNCLang 源预处理为合法 Python 并执行；若源引用未定义的变量（如 `a`），会抛出 Python 的 NameError。
+
+---
+
+## 如何添加新的语法支持（概览）
+
+详见 `docs/EXTENDING.md`。简要步骤：
+
+1. 若只是要让某个裸名字存在（例如 `endwhile`），在 `src/unnclang/macros/` 中用 `@statement_macro` 注册一个占位函数；导入包时会自动注册并注入到 `builtins`（可用 `disable_builtin_macros()` 取消）。
+2. 若要支持无法被 Python 直接解析的语法糖（例如 `then:`、`otherwise`、`repeat/until`），修改 `src/unnclang/runner.py` 中的 `_preprocess(text)`，在执行前把教学语法转换成合法 Python。对于更复杂的语法建议使用 `tokenize` 或写小型解析器以避免误替换注释/字符串。
+3. 为新语法添加测试（`tests/`），并在 CI 中运行 `pytest`。
+
+---
+
+## 发布到 PyPI（简要）
+
+仓库已包含一个 GitHub Actions workflow（`.github/workflows/publish.yml`），当你把 tag 推到仓库（例如 `v0.1.0`）时会自动构建并发布到 PyPI。发布前需要在仓库 Secrets 中配置 `PYPI_API_TOKEN`。
+
+本地发布流程示例：
+
+```bash
+# 更新版本号（pyproject.toml）并提交
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Actions 将在检测到 tag 时触发构建并上传到 PyPI（需要配置好 secrets）。
+
+---
+
+## 开发
+
+- 源码位于 `src/unnclang/`；内置宏在 `src/unnclang/macros/`。
+- 运行测试：
+  ```bash
+  pip install -e .[dev]
+  pytest
+  ```
+
+---
+
+如果你想把更多课堂语法（例如 `repeat..until`、`endfor`）直接支持成语义等价的 Python，我可以帮你把 `_preprocess` 改成基于 `tokenize` 的更健壮实现并添加对应测试。欢迎继续告诉我你想要的关键字列表。
+
+---
+
+许可证：MIT
