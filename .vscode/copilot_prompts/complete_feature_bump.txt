@@ -1,0 +1,21 @@
+每当你看起来完成了一个功能（feature）并准备提交的时候，请提醒我检查并递增项目的版本号（pyproject.toml 中的 [project].version）。
+
+规则：
+- 优先使用语义化版本（SemVer）：major.minor.patch
+- 如果只是小修复或文档、测试更新，使用 patch
+- 如果添加了向后兼容的新特性，使用 minor
+- 如果破坏了向后兼容（API 改变、重大重构），使用 major
+
+请在提醒中包含：
+- 当前检测到的版本号
+- 推荐递增级别（patch/minor/major）并说明原因
+- 一行可执行命令，用于运行项目内的自动递增脚本（示例）：
+  python3 scripts/bump_version.py [patch|minor|major]
+  （添加 --dry-run 以仅显示将要修改的内容）
+- 推荐的提交信息示例：
+  "Bump version: X.Y.Z -> X'.Y'.Z'"
+
+可选：如果你使用 VSCode，可以直接运行工作区任务：Tasks -> Run Task -> "Bump pyproject version"。
+
+——
+提示：将此文本作为 Copilot 的默认提示词或个人提示（Personal Prompt）。每次准备提交功能时，先向 Copilot 发送此提示，以获得版本号建议和执行命令。

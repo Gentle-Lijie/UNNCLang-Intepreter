@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Bump pyproject version (dry-run)",
+      "type": "shell",
+      "command": "python3",
+      "args": ["${workspaceFolder}/scripts/bump_version.py", "patch", "--dry-run"],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Bump pyproject version (apply)",
+      "type": "shell",
+      "command": "python3",
+      "args": ["${workspaceFolder}/scripts/bump_version.py", "patch", "--no-dry-run"],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

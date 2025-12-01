@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "unnclang"
-version = "0.1.2"
+version = "0.1.3"
 description = "Macro-style helpers that let UNNCLang pseudo code run through the Python interpreter"
 readme = "README.md"
 authors = [{ name = "UNNC CELEN086", email = "cso@unnc.edu.cn" }]
