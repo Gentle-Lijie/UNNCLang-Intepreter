@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "unnclang"
+version = "0.1.0"
+description = "Macro-style helpers that let UNNCLang pseudo code run through the Python interpreter"
+readme = "README.md"
+authors = [{ name = "UNNC CELEN086", email = "cso@unnc.edu.cn" }]
+license = { text = "MIT" }
+requires-python = ">=3.10"
+keywords = ["macro", "education", "unnc", "pseudocode"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Education",
+    "Topic :: Software Development :: Code Generators",
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
