@@ -24,56 +24,56 @@ load_macros(globals())
 
 value = 5
 if value > 0:
-    print("positive")
-endif  # 这行在运行时什么也不做，但可以保留 UNNCLang 的语感
-```
+    ## 快速开始（适合新手）
 
-## 测试代码示例
+    下面给出一个最短、最直接的上手流程——零基础同学看着做就行。
 
-项目自带 `tests/test_macros.py`，包含一个最小脚本验证 `endif` 能够作为裸语句出现：
+    1) 推荐方式：从 PyPI 安装（你已在 PyPI 注册了 `unnclang`）
 
-```bash
-pytest tests/test_macros.py
-```
+    ```bash
+    pip install unnclang
+    ```
 
-测试里会 `exec` 以下脚本片段并断言 `message == "positive"`：
+    2) 或者开发者/贡献者模式（在源码目录）：
 
-```python
-from unnclang import load_macros
+    ```bash
+    # 创建并激活虚拟环境（可选但推荐）
+    python3 -m venv .venv
+    source .venv/bin/activate
+    # 安装当前源码为可编辑包（便于开发）
+    pip install -e .
+    ```
 
-load_macros(globals())
+    3) 写一个最小的 UNNCLang 文件（文件名可以是 `demo.uncl`）：
 
-value = 5
-if value > 0:
-    message = "positive"
-endif
-```
+    ```text
+    import unnclang
+    if a>1 then:
+        print("1")
+    endif
+    ```
 
-你可以在此基础上增添更多断言，或把 `exec` 内容替换成真实的 UNNCLang 练习题。
+    说明：这个文件不是标准 Python（`then:` / `endif` 不是 Python 语法），因此我们用工具把它转换后再运行。`import unnclang` 在这里只是表示你在使用这个包提供的语法风格。
 
-## `endif` 示例
+    4) 运行它：
 
-仓库已经内置了 `endif` 语句，定义位于 `src/unnclang/macros/core.py`：
+    ```bash
+    # 推荐：安装后可以直接运行 `uncl` 命令（来自 pip 安装）
+    uncl demo.uncl
 
-```python
-@statement_macro(doc="Marks the end of a conditional block in UNNCLang-style code.")
-def endif():
-    return None
-```
+    # 或者不安装时，用模块方式运行（在仓库根）
+    python -m unnclang.cli demo.uncl
+    ```
 
-由于它被注册成 `StatementMacro` 对象，Python 解释器会把 `endif` 当作一个普通名字处理，因此你可以直接写 `endif`（不要加括号），而不会触发任何函数调用。
+    5) 变量控制：如果文件中引用了未定义的变量（例如 `a`)，Python 会抛出 `NameError`。如果你想预置变量，可以使用 `-s`：
 
-为了课堂更方便，包在导入时会把所有注册的 statement macros 注入到 Python 的 `builtins`，这意味着在导入 `unnclang` 之后，脚本全局就可以直接出现 `endif` 这样裸的名字而无需显式调用 `load_macros(globals())`。
+    ```bash
+    uncl demo.uncl -s a=2
+    ```
 
-如果你不想要这种全局注入（例如避免污染全局命名空间），可以在导入后调用：
+    这样会让 `a` 在执行前被设置为数字 2，程序就会打印 `1`。
 
-```python
-import unnclang
-unnclang.disable_builtin_macros()
-```
-
-## 去哪里添加更多宏？
-
+    ---
 1. 打开 `src/unnclang/macros/core.py`（或者在 `src/unnclang/macros/` 新建模块）。
 2. 使用 `@statement_macro` 装饰器声明一个新的 UNNCLang 语句：
    ```python
